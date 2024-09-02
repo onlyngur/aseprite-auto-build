@@ -10,7 +10,7 @@ permissions:
 jobs:
   auto-build:
     name: Auto build Aseprite for macOS
-    runs-on: macos-12  # Use macOS runner
+    runs-on: macos-14-arm64  # Use macOS runner
 
     steps:
       - name: Checkout repository
