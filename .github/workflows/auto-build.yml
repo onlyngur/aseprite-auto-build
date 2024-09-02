@@ -35,7 +35,7 @@ jobs:
       - name: Build Skia
         run: |
           source venv/bin/activate
-          cd $HOME/deps/skia
+          cd ~/deps/skia
           python tools/git-sync-deps
           gn gen out/Release-arm64 --args="is_debug=false is_official_build=true skia_use_system_expat=false skia_use_system_icu=false skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false skia_use_system_libwebp=false skia_use_system_zlib=false skia_use_sfntly=false skia_use_freetype=true skia_use_harfbuzz=true skia_pdf_subset_harfbuzz=true skia_use_system_freetype2=false skia_use_system_harfbuzz=false target_cpu=\"arm64\" extra_cflags=[\"-stdlib=libc++\", \"-mmacosx-version-min=11.0\"] extra_cflags_cc=[\"-frtti\"]"
           ninja -C out/Release-arm64 skia modules
@@ -51,29 +51,29 @@ jobs:
             -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
             -DCMAKE_OSX_SYSROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk \
             -DLAF_BACKEND=skia \
-            -DSKIA_DIR=$HOME/deps/skia \
-            -DSKIA_LIBRARY_DIR=$HOME/deps/skia/out/Release-arm64 \
-            -DSKIA_LIBRARY=$HOME/deps/skia/out/Release-arm64/libskia.a \
+            -DSKIA_DIR=~/deps/skia \
+            -DSKIA_LIBRARY_DIR=~/deps/skia/out/Release-arm64 \
+            -DSKIA_LIBRARY=~/deps/skia/out/Release-arm64/libskia.a \
             -DPNG_ARM_NEON:STRING=on \
             -G Ninja \
             ..
           ninja aseprite
 
-      - name: Get version
+      - name: Get Version
         id: get_version
         run: |
           version=$(cat version.txt)
-          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "version=$version" >> $GITHUB_ENV
 
       - name: Zip Aseprite
         run: |
           cd build/bin
-          zip -r ../../Aseprite-macOS-${{ steps.get_version.outputs.version }}.zip *
+          zip -r ../../Aseprite-macOS-${{ env.version }}.zip *
 
-      - name: GH Release
+      - name: Upload Release Asset
         uses: softprops/action-gh-release@v2.0.4
         with:
-          name: Aseprite-macOS-${{ steps.get_version.outputs.version }}
-          tag_name: ${{ steps.get_version.outputs.version }}
+          name: Aseprite-macOS-${{ env.version }}
+          tag_name: ${{ env.version }}
           files: |
-            Aseprite-macOS-${{ steps.get_version.outputs.version }}.zip
+            Aseprite-macOS-${{ env.version }}.zip
