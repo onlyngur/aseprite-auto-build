@@ -71,7 +71,7 @@ if __name__ == '__main__':
     skia_tag = get_latest_tag_skia()
     
     if platform.system() == 'Darwin':  # Checks if the OS is macOS
-		clone_depot_tools()
+        clone_depot_tools()
         download_skia_for_macos(skia_tag)
     else:
         print("This script currently only supports macOS.")
