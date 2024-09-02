@@ -8,9 +8,9 @@ permissions:
   contents: write
 
 jobs:
-  setup:
-    name: Set up environment
-    runs-on: macos-14
+  auto-build:
+    name: Auto build Aseprite for macOS
+    runs-on: macos-14  # Use macOS runner
 
     steps:
       - name: Checkout repository
@@ -26,41 +26,24 @@ jobs:
           source venv/bin/activate
           pip install --upgrade pip
           pip install -r requirements.txt
-        env:
-          PATH: ${{ github.workspace }}/venv/bin:${{ env.PATH }}
 
-  download_and_build:
-    name: Download Aseprite and build
-    runs-on: macos-14
-    needs: setup
-
-    steps:
-      - name: Activate Python Virtual Environment
+      - name: Download Aseprite and dependencies
         run: |
           source venv/bin/activate
           python download.py
-        env:
-          PATH: ${{ github.workspace }}/venv/bin:${{ env.PATH }}
 
       - name: Build Skia
         run: |
           source venv/bin/activate
-          mkdir -p $HOME/deps
-          cd $HOME/deps
-          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
-          export PATH="${PWD}/depot_tools:${PATH}"
-          git clone -b aseprite-m102 https://github.com/aseprite/skia.git
-          cd skia
+          cd $HOME/deps/skia
           python tools/git-sync-deps
           gn gen out/Release-arm64 --args="is_debug=false is_official_build=true skia_use_system_expat=false skia_use_system_icu=false skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false skia_use_system_libwebp=false skia_use_system_zlib=false skia_use_sfntly=false skia_use_freetype=true skia_use_harfbuzz=true skia_pdf_subset_harfbuzz=true skia_use_system_freetype2=false skia_use_system_harfbuzz=false target_cpu=\"arm64\" extra_cflags=[\"-stdlib=libc++\", \"-mmacosx-version-min=11.0\"] extra_cflags_cc=[\"-frtti\"]"
           ninja -C out/Release-arm64 skia modules
-        env:
-          PATH: ${{ github.workspace }}/venv/bin:${{ env.PATH }}
 
       - name: Build Aseprite
         run: |
           source venv/bin/activate
-          mkdir -p build
+          mkdir build
           cd build
           cmake \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -75,26 +58,22 @@ jobs:
             -G Ninja \
             ..
           ninja aseprite
-        env:
-          PATH: ${{ github.workspace }}/venv/bin:${{ env.PATH }}
 
       - name: Get version
         id: get_version
         run: |
           version=$(cat version.txt)
-          echo "version=$version" >> $GITHUB_ENV
+          echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: Zip Aseprite
         run: |
           cd build/bin
-          zip -r ../../Aseprite-macOS-${{ env.version }}.zip *
-        env:
-          version: ${{ steps.get_version.outputs.version }}
+          zip -r ../../Aseprite-macOS-${{ steps.get_version.outputs.version }}.zip *
 
       - name: GH Release
         uses: softprops/action-gh-release@v2.0.4
         with:
-          name: Aseprite-macOS-${{ env.version }}
-          tag_name: ${{ env.version }}
+          name: Aseprite-macOS-${{ steps.get_version.outputs.version }}
+          tag_name: ${{ steps.get_version.outputs.version }}
           files: |
-            Aseprite-macOS-${{ env.version }}.zip
+            Aseprite-macOS-${{ steps.get_version.outputs.version }}.zip
