@@ -1,0 +1,68 @@
+name: Auto build Aseprite
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: write
+
+jobs:
+  auto-build:
+    name: Auto build Aseprite for macOS
+    runs-on: macos-12  # Use macOS runner
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Homebrew dependencies
+        run: |
+          brew install cmake ninja libpng jpeg freetype giflib
+
+      - name: Install Python requirements
+        run: |
+          python3 -m pip install --upgrade pip
+          pip3 install -r requirements.txt
+
+      - name: Download Aseprite
+        run: |
+          python3 download.py
+
+      - name: Build Skia
+        run: |
+          cd src/skia
+          python3 tools/git-sync-deps
+          bin/gn gen out/Release --args="is_official_build=true skia_use_libjpeg_turbo=false skia_use_libpng=true skia_use_libwebp=false skia_use_zlib=true skia_use_metal=true"
+          ninja -C out/Release
+
+      - name: Build Aseprite
+        run: |
+          mkdir build
+          cd build
+          cmake -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DLAF_BACKEND=skia \
+            -DSKIA_DIR="../src/skia" \
+            -DSKIA_OUT_DIR="../src/skia/out/Release" \
+            "../src/aseprite"
+          ninja aseprite
+
+      - name: Get version
+        id: get_version
+        run: |
+          version=$(cat version.txt)
+          echo "version=$version" >> $GITHUB_OUTPUT
+
+      - name: Zip Aseprite
+        run: |
+          cd build/bin
+          zip -r ../../Aseprite-macOS-${{ steps.get_version.outputs.version }}.zip *
+
+      - name: GH Release
+        uses: softprops/action-gh-release@v2.0.4
+        with:
+          name: Aseprite-macOS-${{ steps.get_version.outputs.version }}
+          tag_name: ${{ steps.get_version.outputs.version }}
+          files: |
+            Aseprite-macOS-${{ steps.get_version.outputs.version }}.zip
